@@ -46,8 +46,8 @@ class FileScanner:
                     modification_time = os.path.getmtime(file_path)
                     modification_date = time.strftime("%d.%m.%Y", time.localtime(modification_time))
 
-                    results.append((file_path, file_type, creation_date, modification_date))
-                    self.callback(f"Tarandı: {file_path}\n---------------")
+                    # Dosya boyutunu al ve MB cinsinden formatla
+                    file_size = os.path.getsize(file_path) / (1024 * 1024)
 
                     # Yıl ve ay bilgisini al
                     modification_year = time.strftime("%Y", time.localtime(modification_time))
@@ -65,15 +65,24 @@ class FileScanner:
                     if self.keep_copied_files:
                         if os.path.exists(new_file_path):
                             new_file_path = self.get_unique_filename(new_file_path)
-                            print(f"1 - orj:{file} new:{new_file_path}")
-                        else:
-                            print(f"2 orj:{file} - new:{new_file_path}")
-                    else:
-                        print("0")
 
                     # Dosyayı taşı
                     shutil.move(file_path, new_file_path)
-                    self.callback(f"Taşındı: {file_path} -> {new_file_path}\n---------------")
+
+                    # Sonuçları kaydet
+                    results.append((file_path, file_type, creation_date, modification_date, f"{file_size:.2f} MB", new_file_path))
+
+                    # Callback ile verileri ilet
+                    self.callback({
+                        'file_name': file,
+                        'file_path': file_path,
+                        'new_file_path': new_file_path,
+                        'file_type': file_type,
+                        'creation_date': creation_date,
+                        'modification_date': modification_date,
+                        'file_size': f"{file_size:.2f} MB"
+                        
+                    })
 
                 for dir in dirs:
                     dir_path = os.path.join(root, dir)
