@@ -11,9 +11,9 @@ def main():
     root.title("Arşiv Düzenleme Programı")
     
     # Pencereyi ekranın tamamını kaplayacak şekilde ayarlayın
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    root.geometry(f"{screen_width}x{screen_height}+0+0")  # Ekranın sol üst köşesine yerleştir
+    window_width = root.winfo_screenwidth()
+    window_height = root.winfo_screenheight()
+    root.geometry(f"{window_width}x{window_height}+0+0")  # Ekranın sol üst köşesine yerleştirin
 
     app = ArchiveApp(root)  # ArchiveApp sınıfını sadece root argümanı ile başlatın
     app.search_button.config(command=app.search_archive)  # Arama butonu komutunu düzenleyin

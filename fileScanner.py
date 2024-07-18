@@ -4,13 +4,14 @@ import time
 import uuid
 
 class FileScanner:
-    def __init__(self, directory, callback=None, keep_copied_files=False):
+    def __init__(self, directory, output_directory, callback=None, keep_copied_files=False):
         self.directory = directory
+        self.output_directory = output_directory
         self.callback = callback
         self.keep_copied_files = keep_copied_files
         self.image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
         self.video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
-        self.archive_directory = os.path.join(self.directory, "Archive Editor")
+        self.archive_directory = os.path.join(self.output_directory, "Archive Editor")
 
         self.month_names = {
             '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
@@ -81,7 +82,6 @@ class FileScanner:
                         'creation_date': creation_date,
                         'modification_date': modification_date,
                         'file_size': f"{file_size:.2f} MB"
-                        
                     })
 
                 for dir in dirs:
