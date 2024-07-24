@@ -31,6 +31,9 @@ class ArchiveApp:
         self.main_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
         self.main_canvas.configure(yscrollcommand=self.scrollbar.set)
 
+        # Farne tekerleği ile kaydırma işlevi ekle
+        self.main_canvas.bind_all("<MouseWheel>", self.on_mouse_wheel)
+
         # Taranacak arşivler için frame oluştur
         self.archive_frame = tk.Frame(self.main_frame, width=400, height=600)
         self.archive_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -44,7 +47,7 @@ class ArchiveApp:
 
         self.archive_tree = ttk.Treeview(self.archive_tree_frame, columns=("Dizin Yolu",), show='headings', height=10)
         self.archive_tree.heading("Dizin Yolu", text="Dizin Yolu")
-        self.archive_tree.column("Dizin Yolu", minwidth=200, width=300, stretch=tk.NO)
+        self.archive_tree.column("Dizin Yolu", minwidth=200, width=300, stretch=tk.YES)
 
         self.archive_tree_scroll_y = ttk.Scrollbar(self.archive_tree_frame, orient="vertical", command=self.archive_tree.yview)
         self.archive_tree.configure(yscrollcommand=self.archive_tree_scroll_y.set)
@@ -76,7 +79,7 @@ class ArchiveApp:
 
         self.output_tree = ttk.Treeview(self.output_tree_frame, columns=("Dizin Yolu",), show='headings')
         self.output_tree.heading("Dizin Yolu", text="Dizin Yolu")
-        self.output_tree.column("Dizin Yolu", minwidth=200, width=300, stretch=tk.NO)
+        self.output_tree.column("Dizin Yolu", minwidth=200, width=300, stretch=tk.YES)
 
         self.output_tree_scroll_y = ttk.Scrollbar(self.output_tree_frame, orient="vertical", command=self.output_tree.yview)
         self.output_tree.configure(yscrollcommand=self.output_tree_scroll_y.set)
@@ -167,6 +170,12 @@ class ArchiveApp:
 
     def on_frame_configure(self, event):
         self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+
+    def on_mouse_wheel(self, event):
+        if event.state & 0x0001:  # Shift tuşu basılıysa, yatay kaydırma
+            self.main_canvas.xview_scroll(int(-1*(event.delta/120)), "units")
+        else:  # Shift tuşu basılı değilse, dikey kaydırma
+            self.main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
     def open_file_explorer(self, event):
         selected_item = self.tree.selection()
