@@ -3,6 +3,7 @@ from tkinter import filedialog, scrolledtext, BooleanVar, messagebox
 from tkinter import ttk
 import os
 import subprocess
+import threading
 from fileScanner import FileScanner
 
 class ArchiveApp:
@@ -14,10 +15,21 @@ class ArchiveApp:
         self.output_directory_path = None
         self.keep_copied_files_var = BooleanVar()
         self.keep_copied_files_var.set(False)
+        self.total_size = 0
+        self.scanned_size = 0
 
-        # Ana frame oluştur
-        self.main_frame = tk.Frame(root)
-        self.main_frame.pack(side=tk.TOP, pady=20, padx=20, fill=tk.BOTH, expand=True)
+        # Ana frame ve canvas oluştur
+        self.main_canvas = tk.Canvas(root)
+        self.main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.scrollbar = tk.Scrollbar(root, orient="vertical", command=self.main_canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.main_frame = tk.Frame(self.main_canvas)
+        self.main_frame.bind("<Configure>", self.on_frame_configure)
+
+        self.main_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
+        self.main_canvas.configure(yscrollcommand=self.scrollbar.set)
 
         # Taranacak arşivler için frame oluştur
         self.archive_frame = tk.Frame(self.main_frame, width=400, height=600)
@@ -88,8 +100,8 @@ class ArchiveApp:
         self.scan_button.grid(row=1, column=0, pady=10, padx=5)
 
         # Dosya bilgilerini gösterecek Treeview widget'ı için bir frame oluştur
-        self.middle_frame = tk.Frame(root)
-        self.middle_frame.pack(side=tk.TOP, pady=20, padx=20, fill=tk.BOTH, expand=False)
+        self.middle_frame = tk.Frame(self.main_frame)
+        self.middle_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
         self.tree = ttk.Treeview(self.middle_frame, columns=("Dosya Adı", "Dosya Yolu", "Yeni Yer", "Oluşturma Tarihi", "Değiştirme Tarihi", "Tür", "Boyut"), show='headings')
         self.tree.heading("Dosya Adı", text="Dosya Adı")
@@ -102,8 +114,8 @@ class ArchiveApp:
 
         # Sütun genişliklerini ayarla
         self.tree.column("Dosya Adı", minwidth=100, width=150, stretch=tk.NO)
-        self.tree.column("Dosya Yolu", minwidth=300, width=500, stretch=tk.NO)
-        self.tree.column("Yeni Yer", minwidth=400, width=600, stretch=tk.NO)
+        self.tree.column("Dosya Yolu", minwidth=300, width=420, stretch=tk.NO)
+        self.tree.column("Yeni Yer", minwidth=400, width=520, stretch=tk.NO)
         self.tree.column("Oluşturma Tarihi", minwidth=100, width=120, stretch=tk.NO)
         self.tree.column("Değiştirme Tarihi", minwidth=100, width=120, stretch=tk.NO)
         self.tree.column("Tür", minwidth=50, width=70, stretch=tk.NO)
@@ -121,8 +133,8 @@ class ArchiveApp:
         self.tree.pack(fill=tk.BOTH, expand=True)
 
         # Dosya bilgilerini gösterecek scrolledtext (scrollbar'lı metin kutusu) için bir frame oluştur
-        self.bottom_frame = tk.Frame(root)
-        self.bottom_frame.pack(side=tk.BOTTOM, pady=20, padx=20, fill=tk.BOTH, expand=True)
+        self.bottom_frame = tk.Frame(self.main_frame)
+        self.bottom_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
         self.textbox = scrolledtext.ScrolledText(self.bottom_frame, height=10, wrap=tk.NONE, state=tk.DISABLED)
         self.textbox.pack(fill=tk.BOTH, expand=True)
@@ -132,16 +144,29 @@ class ArchiveApp:
         self.textbox.configure(xscrollcommand=self.textbox_scroll.set)
         self.textbox_scroll.pack(side=tk.BOTTOM, fill=tk.X)
 
+        # İlerleme paneli için frame oluştur
+        self.progress_frame = tk.Frame(self.right_inner_frame)
+        self.progress_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+        self.total_size_label = tk.Label(self.progress_frame, text="Toplam Boyut: 0 MB")
+        self.total_size_label.pack()
+
+        self.scanned_size_label = tk.Label(self.progress_frame, text="Tarama Boyutu: 0 MB")
+        self.scanned_size_label.pack()
+
         # Treeview'e çift tıklama olayı ekle
         self.tree.bind("<Double-1>", self.open_file_explorer)
 
         # Çıktı klasörünü seç butonunu ekleyelim
-        self.select_output_button = tk.Button(self.output_frame, text="Çıktı Yerini Seç", command=self.select_output_directory)
-        self.select_output_button.pack()
+        self.select_output_button = tk.Button(self.output_frame, text="Çıktı Klasörü Seç", command=self.select_output_directory)
+        self.select_output_button.pack(pady=10)
 
         # Taranacak arşivler ve çıktı klasörü için dosya gezgini ile açma işlevi ekle
         self.archive_tree.bind("<Double-1>", self.open_directory_explorer)
         self.output_tree.bind("<Double-1>", self.open_directory_explorer)
+
+    def on_frame_configure(self, event):
+        self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
 
     def open_file_explorer(self, event):
         selected_item = self.tree.selection()
@@ -178,6 +203,7 @@ class ArchiveApp:
                 self.directory_paths.append(directory)
                 self.archive_tree.insert("", tk.END, values=(directory,))
                 self.check_directories_selected()
+                self.update_total_size()
         else:
             self.write_message("Hiçbir klasör seçilmedi.")
 
@@ -199,6 +225,7 @@ class ArchiveApp:
             self.directory_paths.remove(directory)
             self.archive_tree.delete(selected_item)
             self.write_message(f"Seçilen klasör kaldırıldı: {directory}")
+            self.update_total_size()
         self.check_directories_selected()
 
     def check_directories_selected(self):
@@ -212,28 +239,74 @@ class ArchiveApp:
             self.write_message("Tarama başlatılıyor...")
             self.scan_button.config(state=tk.DISABLED)
 
-            results = []
-            deleted_folders = []
-
-            for directory in self.directory_paths:
-                scanner = FileScanner(directory, output_directory=self.output_directory_path, callback=self.write_message, keep_copied_files=self.keep_copied_files_var.get())
-                results += scanner.scan_files()
-
-                self.write_message("Boş kalan klasörler siliniyor...")
-                deleted_folders_temp, errors = scanner.remove_empty_directories(directory)
-                deleted_folders += deleted_folders_temp
-
-                if errors:
-                    self.write_message("Silinemeyen klasörler:")
-                    for error in errors:
-                        self.write_message(error)
-
-            self.write_message("Tarama tamamlandı.")
-            self.write_message(f"{len(results)} adet dosya taşındı.")
-            self.write_message(f"{len(deleted_folders)} adet klasör silindi.")
-            self.scan_button.config(state=tk.NORMAL)
+            # Arka planda tarama işlemini başlat
+            thread = threading.Thread(target=self.scan_files_in_background)
+            thread.start()
         else:
             self.write_message("Lütfen arama yapılacak klasörleri ve çıktı klasörünü seçin.")
+
+    def update_total_size(self):
+        total_size = 0
+        for directory in self.directory_paths:
+            for dirpath, _, files in os.walk(directory):
+                for file in files:
+                    filepath = os.path.join(dirpath, file)
+                    total_size += os.path.getsize(filepath)
+        
+        self.total_size = total_size / (1024 * 1024)  # MB
+        self.total_size_label.config(text=f"Toplam Boyut: {self.total_size:.2f} MB")
+
+    def scan_files_in_background(self):
+        results = []
+        deleted_folders = []
+        self.scanned_size = 0
+        self.total_size = 0
+
+        # Arayüzdeki ilerleme çubuğunu güncellemek için bir fonksiyon
+        def update_progress_bar():
+            if self.total_size > 0:
+                self.scanned_size_label.config(text=f"Tarama Boyutu: {self.scanned_size:.2f} MB")
+            self.root.update_idletasks()
+
+        # Toplam dosya boyutunu hesaplayalım
+        def calculate_total_size():
+            total_size = 0
+            for directory in self.directory_paths:
+                for root, dirs, files in os.walk(directory):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        total_size += os.path.getsize(file_path)
+            return total_size / (1024 * 1024)  # MB
+
+        self.total_size = calculate_total_size()  # Toplam boyut
+        self.total_size_label.config(text=f"Toplam Boyut: {self.total_size:.2f} MB")
+
+        # Tarama işlemi
+        def progress_callback(file_size):
+            self.scanned_size += file_size
+            update_progress_bar()
+
+        for directory in self.directory_paths:
+            scanner = FileScanner(directory, output_directory=self.output_directory_path, callback=self.write_message, keep_copied_files=self.keep_copied_files_var.get())
+            results += scanner.scan_files(progress_callback=progress_callback)
+
+            self.write_message("Boş kalan klasörler siliniyor...")
+            deleted_folders_temp, errors = scanner.remove_empty_directories(directory)
+            deleted_folders += deleted_folders_temp
+
+            if errors:
+                self.write_message("Silinemeyen klasörler:")
+                for error in errors:
+                    self.write_message(error)
+
+        # Tarama tamamlandıktan sonra arayüzü güncelle
+        self.root.after(0, lambda: self.write_message("Tarama tamamlandı."))
+        self.root.after(0, lambda: self.write_message(f"{len(results)} adet dosya taşındı."))
+        self.root.after(0, lambda: self.write_message(f"{len(deleted_folders)} adet klasör silindi."))
+        self.root.after(0, lambda: self.scan_button.config(state=tk.NORMAL))
+
+
+
 
     def write_message(self, message):
         if isinstance(message, dict):

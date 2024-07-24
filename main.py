@@ -1,10 +1,5 @@
 import tkinter as tk
-from ui import ArchiveApp
-from fileScanner import FileScanner
-
-def on_directory_selected(directory_path):
-    scanner = FileScanner(directory_path)
-    scanner.scan_files()
+from uiGeneral import UIGeneral
 
 def main():
     root = tk.Tk()
@@ -15,10 +10,7 @@ def main():
     window_height = root.winfo_screenheight()
     root.geometry(f"{window_width}x{window_height}+0+0")  # Ekranın sol üst köşesine yerleştirin
 
-    app = ArchiveApp(root)  # ArchiveApp sınıfını sadece root argümanı ile başlatın
-    app.search_button.config(command=app.search_archive)  # Arama butonu komutunu düzenleyin
-    app.scan_button.config(command=app.start_scan)  # Tarama butonu komutunu düzenleyin
-
+    app = UIGeneral(root)  # UIGeneral sınıfını başlatın
     root.mainloop()
 
 if __name__ == "__main__":

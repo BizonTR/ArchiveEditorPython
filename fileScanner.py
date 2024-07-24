@@ -12,6 +12,7 @@ class FileScanner:
         self.image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']
         self.video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
         self.archive_directory = os.path.join(self.output_directory, "Archive Editor")
+        self.scanned_size = 0  # Toplam taranan dosya boyutu
 
         self.month_names = {
             '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
@@ -19,7 +20,7 @@ class FileScanner:
             '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
         }
 
-    def scan_files(self):
+    def scan_files(self, progress_callback=None):
         results = []
         try:
             if not os.path.exists(self.archive_directory):
@@ -31,9 +32,11 @@ class FileScanner:
 
                 for file in files:
                     file_path = os.path.join(root, file)
+                    file_size = os.path.getsize(file_path)
+                    file_size_mb = file_size / (1024 * 1024)  # MB
                     file_extension = os.path.splitext(file_path)[1].lower()
                     file_type = "Diğer"
-                    
+
                     if file_extension in self.image_extensions:
                         file_type = "Resim"
                     elif file_extension in self.video_extensions:
@@ -46,9 +49,6 @@ class FileScanner:
                     # Dosyanın değiştirme tarihini al ve gün.ay.yıl formatına dönüştür
                     modification_time = os.path.getmtime(file_path)
                     modification_date = time.strftime("%d.%m.%Y", time.localtime(modification_time))
-
-                    # Dosya boyutunu al ve MB cinsinden formatla
-                    file_size = os.path.getsize(file_path) / (1024 * 1024)
 
                     # Yıl ve ay bilgisini al
                     modification_year = time.strftime("%Y", time.localtime(modification_time))
@@ -71,7 +71,15 @@ class FileScanner:
                     shutil.move(file_path, new_file_path)
 
                     # Sonuçları kaydet
-                    results.append((file_path, file_type, creation_date, modification_date, f"{file_size:.2f} MB", new_file_path))
+                    results.append({
+                        'file_name': file,
+                        'file_path': file_path,
+                        'new_file_path': new_file_path,
+                        'creation_date': creation_date,
+                        'modification_date': modification_date,
+                        'file_type': file_type,
+                        'file_size': file_size_mb
+                    })
 
                     # Callback ile verileri ilet
                     self.callback({
@@ -81,18 +89,24 @@ class FileScanner:
                         'file_type': file_type,
                         'creation_date': creation_date,
                         'modification_date': modification_date,
-                        'file_size': f"{file_size:.2f} MB"
+                        'file_size': f"{file_size_mb:.2f} MB"
                     })
+                    
+                    # Her dosya tarandıktan sonra arayüzü güncelle
+                    if progress_callback:
+                        progress_callback(file_size_mb)
 
-                for dir in dirs:
-                    dir_path = os.path.join(root, dir)
-                    self.callback(f"Klasör taranıyor: {dir_path}\n---------------")
+                    # Klasörün ilerleme durumu
+                    self.callback(f"Klasör taranıyor: {root}\n---------------")
+
+            return results
 
         except Exception as e:
             error_message = f"Bir hata oluştu: {str(e)}\n---------------"
             self.callback(error_message)
+            return results
 
-        return results
+
 
     def get_unique_filename(self, filepath):
         filename, extension = os.path.splitext(filepath)
@@ -111,13 +125,19 @@ class FileScanner:
                         if not os.listdir(dir_path):  # Klasör boşsa sil
                             os.rmdir(dir_path)
                             deleted_folders.append(dir_path)
-                            self.callback(f"Klasör silindi: {dir_path}\n---------------")
+                            if self.callback:
+                                self.callback(f"Klasör silindi: {dir_path}\n---------------")
                     except Exception as e:
                         error_message = f"Klasör silinemedi: {dir_path}. Hata: {str(e)}\n---------------"
                         errors.append(error_message)
+                        if self.callback:
+                            self.callback(error_message)
 
         except Exception as e:
-            error_message = f"Bir hata oluştu: {str(e)}\n---------------"
-            self.callback(error_message)
+            if self.callback:
+                self.callback(f"Bir hata oluştu: {str(e)}\n---------------")
 
         return deleted_folders, errors
+    
+    def get_scanned_size(self):
+        return self.scanned_size
