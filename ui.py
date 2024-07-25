@@ -18,14 +18,16 @@ class ArchiveApp:
         self.total_size = 0
         self.scanned_size = 0
 
-        # Ana frame ve canvas oluştur
-        self.main_canvas = tk.Canvas(root)
+        # Ana canvas oluştur ve tüm pencereyi kapla
+        self.main_canvas = tk.Canvas(root, borderwidth=0, background="#ffffff")
         self.main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
+        # Scrollbar oluştur ve ana canvas'a bağla
         self.scrollbar = tk.Scrollbar(root, orient="vertical", command=self.main_canvas.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.main_frame = tk.Frame(self.main_canvas)
+        # Ana frame oluştur ve canvas'a ekle
+        self.main_frame = tk.Frame(self.main_canvas, background="#ffffff")
         self.main_frame.bind("<Configure>", self.on_frame_configure)
 
         self.main_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
@@ -34,14 +36,17 @@ class ArchiveApp:
         # Farne tekerleği ile kaydırma işlevi ekle
         self.main_canvas.bind_all("<MouseWheel>", self.on_mouse_wheel)
 
-        # Taranacak arşivler için frame oluştur
-        self.archive_frame = tk.Frame(self.main_frame, width=400, height=600)
-        self.archive_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        # Frame'leri ana frame'e ekle
+        self.setup_frames()
 
-        self.archive_list_label = tk.Label(self.archive_frame, text="Taranacak Arşivler")
+    def setup_frames(self):
+        # Taranacak arşivler için frame
+        self.archive_frame = tk.Frame(self.main_frame, width=400, height=600, bg="#f0f0f0")
+        self.archive_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+
+        self.archive_list_label = tk.Label(self.archive_frame, text="Taranacak Arşivler", bg="#f0f0f0")
         self.archive_list_label.pack()
 
-        # Scrollbar'lı Treeview oluştur
         self.archive_tree_frame = tk.Frame(self.archive_frame)
         self.archive_tree_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -59,21 +64,19 @@ class ArchiveApp:
 
         self.archive_tree.pack(pady=10, fill=tk.BOTH, expand=True)
 
-        # Arşiv arama butonunu alt tarafta konumlandır
         self.search_button = tk.Button(self.archive_frame, text="Arşiv Ara", command=self.search_archive)
         self.search_button.pack(pady=10, side=tk.LEFT)
 
         self.remove_button = tk.Button(self.archive_frame, text="Seçileni Sil", command=self.remove_selected_archive)
         self.remove_button.pack(side=tk.LEFT, padx=10)
 
-        # Çıktı klasörü için frame oluştur
-        self.output_frame = tk.Frame(self.main_frame, width=400, height=600)
-        self.output_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        # Çıktı klasörü için frame
+        self.output_frame = tk.Frame(self.main_frame, width=400, height=600, bg="#f0f0f0")
+        self.output_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
 
-        self.output_list_label = tk.Label(self.output_frame, text="Çıktı Klasörü")
+        self.output_list_label = tk.Label(self.output_frame, text="Çıktı Klasörü", bg="#f0f0f0")
         self.output_list_label.pack()
 
-        # Scrollbar'lı Treeview oluştur
         self.output_tree_frame = tk.Frame(self.output_frame)
         self.output_tree_frame.pack(fill=tk.BOTH, expand=False)
 
@@ -91,20 +94,32 @@ class ArchiveApp:
 
         self.output_tree.pack(pady=10, fill=tk.BOTH, expand=True)
 
+        self.select_output_button = tk.Button(self.output_frame, text="Çıktı Klasörü Seç", command=self.select_output_directory)
+        self.select_output_button.pack(pady=10)
+
         # Sağ tarafta butonlar ve checkbox
-        self.right_inner_frame = tk.Frame(self.main_frame)
-        self.right_inner_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+        self.right_inner_frame = tk.Frame(self.main_frame, bg="#f0f0f0")
+        self.right_inner_frame.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
 
         self.keep_copied_files_checkbox = tk.Checkbutton(self.right_inner_frame, text="Klon dosyaları farklı isimle sakla",
-                                                         variable=self.keep_copied_files_var)
+                                                         variable=self.keep_copied_files_var, bg="#f0f0f0")
         self.keep_copied_files_checkbox.grid(row=0, column=0, pady=10, padx=5)
 
         self.scan_button = tk.Button(self.right_inner_frame, text="Tarama Başlat", command=self.start_scan, state=tk.DISABLED)
         self.scan_button.grid(row=1, column=0, pady=10, padx=5)
 
-        # Dosya bilgilerini gösterecek Treeview widget'ı için bir frame oluştur
-        self.middle_frame = tk.Frame(self.main_frame)
-        self.middle_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        self.progress_frame = tk.Frame(self.right_inner_frame, bg="#f0f0f0")
+        self.progress_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+        self.total_size_label = tk.Label(self.progress_frame, text="Toplam Boyut: 0 MB", bg="#f0f0f0")
+        self.total_size_label.pack()
+
+        self.scanned_size_label = tk.Label(self.progress_frame, text="Tarama Boyutu: 0 MB", bg="#f0f0f0")
+        self.scanned_size_label.pack()
+
+        # Dosya bilgilerini gösterecek Treeview widget'ı için bir frame
+        self.middle_frame = tk.Frame(self.main_frame, bg="#f0f0f0")
+        self.middle_frame.grid(row=1, column=0, columnspan=3, padx=20, pady=20, sticky="nsew")
 
         self.tree = ttk.Treeview(self.middle_frame, columns=("Dosya Adı", "Dosya Yolu", "Yeni Yer", "Oluşturma Tarihi", "Değiştirme Tarihi", "Tür", "Boyut"), show='headings')
         self.tree.heading("Dosya Adı", text="Dosya Adı")
@@ -115,7 +130,6 @@ class ArchiveApp:
         self.tree.heading("Tür", text="Tür")
         self.tree.heading("Boyut", text="Boyut")
 
-        # Sütun genişliklerini ayarla
         self.tree.column("Dosya Adı", minwidth=100, width=150, stretch=tk.NO)
         self.tree.column("Dosya Yolu", minwidth=300, width=420, stretch=tk.NO)
         self.tree.column("Yeni Yer", minwidth=400, width=520, stretch=tk.NO)
@@ -124,7 +138,6 @@ class ArchiveApp:
         self.tree.column("Tür", minwidth=50, width=70, stretch=tk.NO)
         self.tree.column("Boyut", minwidth=50, width=70, stretch=tk.NO)
 
-        # Scrollbar oluştur ve Treeview'e bağla
         self.tree_scroll = ttk.Scrollbar(self.middle_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.tree_scroll.set)
         self.tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -135,36 +148,18 @@ class ArchiveApp:
 
         self.tree.pack(fill=tk.BOTH, expand=True)
 
-        # Dosya bilgilerini gösterecek scrolledtext (scrollbar'lı metin kutusu) için bir frame oluştur
-        self.bottom_frame = tk.Frame(self.main_frame)
-        self.bottom_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        # Dosya bilgilerini gösterecek scrolledtext (scrollbar'lı metin kutusu) için bir frame
+        self.bottom_frame = tk.Frame(self.main_frame, bg="#f0f0f0")
+        self.bottom_frame.grid(row=2, column=0, columnspan=3, padx=20, pady=20, sticky="nsew")
 
         self.textbox = scrolledtext.ScrolledText(self.bottom_frame, height=10, wrap=tk.NONE, state=tk.DISABLED)
         self.textbox.pack(fill=tk.BOTH, expand=True)
 
-        # Yatay scrollbar oluştur ve textbox'a bağla
         self.textbox_scroll = ttk.Scrollbar(self.bottom_frame, orient="horizontal", command=self.textbox.xview)
         self.textbox.configure(xscrollcommand=self.textbox_scroll.set)
         self.textbox_scroll.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # İlerleme paneli için frame oluştur
-        self.progress_frame = tk.Frame(self.right_inner_frame)
-        self.progress_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
-
-        self.total_size_label = tk.Label(self.progress_frame, text="Toplam Boyut: 0 MB")
-        self.total_size_label.pack()
-
-        self.scanned_size_label = tk.Label(self.progress_frame, text="Tarama Boyutu: 0 MB")
-        self.scanned_size_label.pack()
-
-        # Treeview'e çift tıklama olayı ekle
         self.tree.bind("<Double-1>", self.open_file_explorer)
-
-        # Çıktı klasörünü seç butonunu ekleyelim
-        self.select_output_button = tk.Button(self.output_frame, text="Çıktı Klasörü Seç", command=self.select_output_directory)
-        self.select_output_button.pack(pady=10)
-
-        # Taranacak arşivler ve çıktı klasörü için dosya gezgini ile açma işlevi ekle
         self.archive_tree.bind("<Double-1>", self.open_directory_explorer)
         self.output_tree.bind("<Double-1>", self.open_directory_explorer)
 
